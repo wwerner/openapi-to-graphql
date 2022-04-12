@@ -60,7 +60,7 @@ type GetResolverParams<TSource, TContext, TArgs> = {
   payloadName?: string
   responseName?: string
   data: PreprocessingData<TSource, TContext, TArgs>
-  baseUrl?: string
+  baseUrl?: string | (() => string)
   requestOptions?: Partial<RequestOptions<TSource, TContext, TArgs>>
   fileUploadOptions?: FileUploadOptions
   fetch: typeof crossFetch
@@ -79,7 +79,7 @@ type GetSubscribeParams<TSource, TContext, TArgs> = {
   argsFromLink?: { [key: string]: string }
   payloadName?: string
   data: PreprocessingData<TSource, TContext, TArgs>
-  baseUrl?: string
+  baseUrl?: string | (() => string)
   connectOptions?: ConnectOptions
 }
 
@@ -128,6 +128,9 @@ export function getSubscribe<TSource, TContext, TArgs>({
   TArgs
 > {
   // Determine the appropriate URL:
+  if (typeof baseUrl === 'function') {
+    baseUrl = baseUrl()
+  }
   if (typeof baseUrl === 'undefined') {
     baseUrl = Oas3Tools.getBaseUrl(operation)
   }
@@ -349,10 +352,10 @@ function inferLinkArguments<TSource, TContext, TArgs>({
   resolveData,
   source,
   args
-}: inferLinkArgumentsParam<TSource, TContext, TArgs>)  {
+}: inferLinkArgumentsParam<TSource, TContext, TArgs>) {
   if (typeof value === 'object') {
     return Object.entries(value).reduce((acc, [key, value]) => {
-      acc[key] = inferLinkArguments({paramName, value, resolveData, source, args})
+      acc[key] = inferLinkArguments({ paramName, value, resolveData, source, args })
       return acc
     }, {})
   }
@@ -361,8 +364,8 @@ function inferLinkArguments<TSource, TContext, TArgs>({
     return value
   } else if (value.search(/{|}/) === -1) {
     return isRuntimeExpression(value)
-        ? resolveRuntimeExpression(paramName, value, resolveData, source, args)
-        : value
+      ? resolveRuntimeExpression(paramName, value, resolveData, source, args)
+      : value
   } else {
     // Replace link parameters with appropriate values
     const linkParams = value.match(/{([^}]*)}/g)
@@ -392,6 +395,9 @@ export function getResolver<TSource, TContext, TArgs>({
   TArgs
 > {
   // Determine the appropriate URL:
+  if (typeof baseUrl === 'function') {
+    baseUrl = baseUrl()
+  }
   if (typeof baseUrl === 'undefined') {
     baseUrl = Oas3Tools.getBaseUrl(operation)
   }
@@ -493,7 +499,7 @@ export function getResolver<TSource, TContext, TArgs>({
 
       let value = argsFromLink[paramName]
 
-      args[saneParamName] = inferLinkArguments({paramName, value, resolveData, source, args})
+      args[saneParamName] = inferLinkArguments({ paramName, value, resolveData, source, args })
     }
 
     // Stored used parameters to future requests:
@@ -506,7 +512,7 @@ export function getResolver<TSource, TContext, TArgs>({
       args,
       data
     )
-    const url = new URL(urljoin(baseUrl, path))
+    const url = new URL(urljoin(typeof baseUrl === 'function' ? baseUrl() : baseUrl, path))
 
     /**
      * The Content-Type and Accept property should not be changed because the
@@ -598,48 +604,48 @@ export function getResolver<TSource, TContext, TArgs>({
         const formFieldsPayloadEntries = Object.entries(args[sanePayloadName]);
 
         (await Promise.all(formFieldsPayloadEntries.map(([_, v]) => v)))
-            .forEach((fieldValue, idx) => {
-              const fieldName = formFieldsPayloadEntries[idx][0]
+          .forEach((fieldValue, idx) => {
+            const fieldName = formFieldsPayloadEntries[idx][0]
 
-              if (typeof fieldValue === 'object' && Boolean((fieldValue as Partial<FileUpload>).createReadStream)) {
-                const uploadingFile = fieldValue as FileUpload
-                const originalFileStream = uploadingFile.createReadStream()
-                const filePassThrough = new stream.PassThrough()
+            if (typeof fieldValue === 'object' && Boolean((fieldValue as Partial<FileUpload>).createReadStream)) {
+              const uploadingFile = fieldValue as FileUpload
+              const originalFileStream = uploadingFile.createReadStream()
+              const filePassThrough = new stream.PassThrough()
 
-                originalFileStream.on('readable', function () {
-                  let data
+              originalFileStream.on('readable', function () {
+                let data
 
-                  while (data = this.read()) {
-                    const canReadNext = filePassThrough.write(data)
-                    if (!canReadNext) {
-                      this.pause()
-                      filePassThrough.once('drain', () => this.resume())
-                    }
+                while (data = this.read()) {
+                  const canReadNext = filePassThrough.write(data)
+                  if (!canReadNext) {
+                    this.pause()
+                    filePassThrough.once('drain', () => this.resume())
                   }
-                })
+                }
+              })
 
-                originalFileStream.on('error', () => {
-                  uploadLog('Encountered an error while uploading the file %s', uploadingFile.filename)
-                })
+              originalFileStream.on('error', () => {
+                uploadLog('Encountered an error while uploading the file %s', uploadingFile.filename)
+              })
 
-                originalFileStream.on('end', () => {
-                  uploadLog('Upload for received file %s completed', uploadingFile.filename)
-                  filePassThrough.end()
-                })
+              originalFileStream.on('end', () => {
+                uploadLog('Upload for received file %s completed', uploadingFile.filename)
+                filePassThrough.end()
+              })
 
-                uploadLog('Queuing upload for received file %s', uploadingFile.filename)
+              uploadLog('Queuing upload for received file %s', uploadingFile.filename)
 
-                form.append(fieldName, filePassThrough, {
-                  filename: uploadingFile.filename,
-                  contentType: uploadingFile.mimetype
-                })
-              } else if (typeof fieldValue !== 'string') {
-                // Handle all other primitives that aren't strings as strings the way the web server would expect it
-                form.append(fieldName, JSON.stringify(fieldValue))
-              } else {
-                form.append(fieldName, fieldValue)
-              }
-            })
+              form.append(fieldName, filePassThrough, {
+                filename: uploadingFile.filename,
+                contentType: uploadingFile.mimetype
+              })
+            } else if (typeof fieldValue !== 'string') {
+              // Handle all other primitives that aren't strings as strings the way the web server would expect it
+              form.append(fieldName, JSON.stringify(fieldValue))
+            } else {
+              form.append(fieldName, fieldValue)
+            }
+          })
 
         rawPayload = form
       } else {
@@ -728,8 +734,8 @@ export function getResolver<TSource, TContext, TArgs>({
     // Make the call
     httpLog(
       `Call ${options.method.toUpperCase()} ${url.toString()}\n` +
-        `headers: ${JSON.stringify(options.headers)}\n` +
-        `request body: ${options.body}`
+      `headers: ${JSON.stringify(options.headers)}\n` +
+      `request body: ${options.body}`
     )
 
     let response: Response
@@ -1018,7 +1024,7 @@ function createOAuthHeader<TSource, TContext, TArgs>(
   } else {
     httpLog(
       `Warning: could not extract OAuth token from context at ` +
-        `'${tokenJSONpath}'`
+      `'${tokenJSONpath}'`
     )
     return {}
   }
@@ -1093,7 +1099,7 @@ function getAuthOptions<TSource, TContext, TArgs>(
           default:
             throw new Error(
               `Cannot recognize http security scheme ` +
-                `'${JSON.stringify(security.def.scheme)}'`
+              `'${JSON.stringify(security.def.scheme)}'`
             )
         }
         break
@@ -1314,8 +1320,8 @@ function getIdentifierRecursive(path): string {
      * friends/friends/friends/user
      */
     isNaN(parseInt(path.key))
-    ? `${path.key}/${getIdentifierRecursive(path.prev)}`
-    : getIdentifierRecursive(path.prev)
+      ? `${path.key}/${getIdentifierRecursive(path.prev)}`
+      : getIdentifierRecursive(path.prev)
 }
 
 /**
@@ -1401,8 +1407,8 @@ export function extractRequestDataFromArgs<TSource, TContext, TArgs>(
         default:
           httpLog(
             `Warning: The parameter location '${param.in}' in the ` +
-              `parameter '${param.name}' of operation '${path}' is not ` +
-              `supported`
+            `parameter '${param.name}' of operation '${path}' is not ` +
+            `supported`
           )
       }
     }
