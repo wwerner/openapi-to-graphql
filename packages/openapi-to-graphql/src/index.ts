@@ -918,7 +918,7 @@ function addSubscriptionFields<TSource, TContext, TArgs>({
  */
 function getFieldForOperation<TSource, TContext, TArgs>(
   operation: Operation,
-  baseUrl: string,
+  baseUrl: string | (() => string),
   data: PreprocessingData<TSource, TContext, TArgs>,
   requestOptions: Partial<RequestOptions<TSource, TContext, TArgs>>,
   fileUploadOptions: FileUploadOptions,

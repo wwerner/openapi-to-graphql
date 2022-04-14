@@ -1,6 +1,6 @@
 {
-  "name": "openapi-to-graphql",
-  "version": "2.6.3",
+  "name": "@wwerner/openapi-to-graphql",
+  "version": "2.6.3-experimental3",
   "description": "Generates a GraphQL schema for a given OpenAPI Specification (OAS)",
   "copyright.owner": "IBM Corp.",
   "contributors": [
@@ -12,9 +12,9 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/ibm/openapi-to-graphql"
+    "url": "https://github.com/wwerner/openapi-to-graphql"
   },
-  "homepage": "https://github.com/ibm/openapi-to-graphql",
+  "homepage": "https://github.com/wwerner/openapi-to-graphql",
   "keywords": [
     "ibm",
     "strongloop",
@@ -136,5 +136,8 @@
     "ts-jest": "^27.0.3",
     "tslint": "^6.0.0",
     "tslint-config-standard": "^9.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

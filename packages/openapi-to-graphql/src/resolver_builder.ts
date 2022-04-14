@@ -60,7 +60,7 @@ type GetResolverParams<TSource, TContext, TArgs> = {
   payloadName?: string
   responseName?: string
   data: PreprocessingData<TSource, TContext, TArgs>
-  baseUrl?: string
+  baseUrl?: string | ( ()=>string )
   requestOptions?: Partial<RequestOptions<TSource, TContext, TArgs>>
   fileUploadOptions?: FileUploadOptions
   fetch: typeof crossFetch
@@ -79,7 +79,7 @@ type GetSubscribeParams<TSource, TContext, TArgs> = {
   argsFromLink?: { [key: string]: string }
   payloadName?: string
   data: PreprocessingData<TSource, TContext, TArgs>
-  baseUrl?: string
+  baseUrl?: string | ( ()=>string )
   connectOptions?: ConnectOptions
 }
 
@@ -127,11 +127,6 @@ export function getSubscribe<TSource, TContext, TArgs>({
   SubscriptionContext,
   TArgs
 > {
-  // Determine the appropriate URL:
-  if (typeof baseUrl === 'undefined') {
-    baseUrl = Oas3Tools.getBaseUrl(operation)
-  }
-
   // Return custom resolver if it is defined
   const customResolvers = data.options.customSubscriptionResolvers
   const title = operation.oas.info.title
@@ -391,11 +386,6 @@ export function getResolver<TSource, TContext, TArgs>({
   TContext,
   TArgs
 > {
-  // Determine the appropriate URL:
-  if (typeof baseUrl === 'undefined') {
-    baseUrl = Oas3Tools.getBaseUrl(operation)
-  }
-
   // Return custom resolver if it is defined
   const customResolvers = data.options.customResolvers
   const title = operation.oas.info.title
@@ -415,6 +405,11 @@ export function getResolver<TSource, TContext, TArgs>({
 
   // Return resolve function:
   return async (source, args, context, info) => {
+    // Use default base URL if not specified explicitly:
+    if (typeof baseUrl === 'undefined') {
+      baseUrl = Oas3Tools.getBaseUrl(operation)
+    }
+
     /**
      * Fetch resolveData from possibly existing _openAPIToGraphQL
      *
@@ -506,7 +501,7 @@ export function getResolver<TSource, TContext, TArgs>({
       args,
       data
     )
-    const url = new URL(urljoin(baseUrl, path))
+    const url = new URL(urljoin(typeof baseUrl === 'function' ? baseUrl() : baseUrl, path))
 
     /**
      * The Content-Type and Accept property should not be changed because the

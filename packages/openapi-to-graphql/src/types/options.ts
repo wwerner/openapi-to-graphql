@@ -241,9 +241,10 @@ export type InternalOptions<TSource, TContext, TArgs> = {
 
   /**
    * Specifies the URL on which all paths will be based on.
+   * Can be provided either as a string or a function that returns a baseUrl as string.
    * Overrides the server object in the OAS.
    */
-  baseUrl?: string
+  baseUrl?: string | (() => string)
 
   /**
    * Allows to define custom resolvers for fields on the Query/Mutation root
