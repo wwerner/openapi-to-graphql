@@ -148,14 +148,6 @@ export function getSubscribe<TSource, TContext, TArgs>({
   }
 
   return (root, args, context, info) => {
-    // Determine the appropriate URL:
-    if (typeof baseUrl === 'function') {
-      baseUrl = baseUrl()
-    }
-    if (typeof baseUrl === 'undefined') {
-      baseUrl = Oas3Tools.getBaseUrl(operation)
-    }
-
     /**
      * Determine possible topic(s) by resolving callback path
      *
@@ -413,10 +405,7 @@ export function getResolver<TSource, TContext, TArgs>({
 
   // Return resolve function:
   return async (source, args, context, info) => {
-    // Determine the appropriate URL:
-    if (typeof baseUrl === 'function') {
-      baseUrl = baseUrl()
-    }
+    // Use default base URL if not specified explicitly:
     if (typeof baseUrl === 'undefined') {
       baseUrl = Oas3Tools.getBaseUrl(operation)
     }
@@ -512,7 +501,7 @@ export function getResolver<TSource, TContext, TArgs>({
       args,
       data
     )
-    const url = new URL(urljoin(baseUrl, path))
+    const url = new URL(urljoin(typeof baseUrl === 'function' ? baseUrl() : baseUrl, path))
 
     /**
      * The Content-Type and Accept property should not be changed because the
