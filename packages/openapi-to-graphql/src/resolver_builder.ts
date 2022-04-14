@@ -60,7 +60,7 @@ type GetResolverParams<TSource, TContext, TArgs> = {
   payloadName?: string
   responseName?: string
   data: PreprocessingData<TSource, TContext, TArgs>
-  baseUrl?: string
+  baseUrl?: string | ( ()=>string )
   requestOptions?: Partial<RequestOptions<TSource, TContext, TArgs>>
   fileUploadOptions?: FileUploadOptions
   fetch: typeof crossFetch
@@ -79,7 +79,7 @@ type GetSubscribeParams<TSource, TContext, TArgs> = {
   argsFromLink?: { [key: string]: string }
   payloadName?: string
   data: PreprocessingData<TSource, TContext, TArgs>
-  baseUrl?: string
+  baseUrl?: string | ( ()=>string )
   connectOptions?: ConnectOptions
 }
 
@@ -127,11 +127,6 @@ export function getSubscribe<TSource, TContext, TArgs>({
   SubscriptionContext,
   TArgs
 > {
-  // Determine the appropriate URL:
-  if (typeof baseUrl === 'undefined') {
-    baseUrl = Oas3Tools.getBaseUrl(operation)
-  }
-
   // Return custom resolver if it is defined
   const customResolvers = data.options.customSubscriptionResolvers
   const title = operation.oas.info.title
@@ -153,6 +148,14 @@ export function getSubscribe<TSource, TContext, TArgs>({
   }
 
   return (root, args, context, info) => {
+    // Determine the appropriate URL:
+    if (typeof baseUrl === 'function') {
+      baseUrl = baseUrl()
+    }
+    if (typeof baseUrl === 'undefined') {
+      baseUrl = Oas3Tools.getBaseUrl(operation)
+    }
+
     /**
      * Determine possible topic(s) by resolving callback path
      *
@@ -391,11 +394,6 @@ export function getResolver<TSource, TContext, TArgs>({
   TContext,
   TArgs
 > {
-  // Determine the appropriate URL:
-  if (typeof baseUrl === 'undefined') {
-    baseUrl = Oas3Tools.getBaseUrl(operation)
-  }
-
   // Return custom resolver if it is defined
   const customResolvers = data.options.customResolvers
   const title = operation.oas.info.title
@@ -415,6 +413,14 @@ export function getResolver<TSource, TContext, TArgs>({
 
   // Return resolve function:
   return async (source, args, context, info) => {
+    // Determine the appropriate URL:
+    if (typeof baseUrl === 'function') {
+      baseUrl = baseUrl()
+    }
+    if (typeof baseUrl === 'undefined') {
+      baseUrl = Oas3Tools.getBaseUrl(operation)
+    }
+
     /**
      * Fetch resolveData from possibly existing _openAPIToGraphQL
      *
